@@ -3,7 +3,7 @@ MeanGene is an unsupervised method for identifying groups of genes that are expr
 
 
 
-#  Case Study: Bottlenose Dolphins Exposed to PFOS
+#  Case Study: Bottlenose Dolphins
 # Data
 # 1) Samples
 The initial data I explored was the gene counts from 9 RNA-sequenced dolphins from Charleston, SC.
