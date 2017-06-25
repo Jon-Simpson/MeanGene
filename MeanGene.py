@@ -4,7 +4,7 @@ class meangene(object):
         import pandas as pd
         import numpy as np
 
-        # File1 is a DEseq expression txt file from OnRamp
+        # File1 is a DEseq ouput file in .txt format created by OnRamp Bioinformatics
         # File2 is a metadata txt file
         # NOTE: Samples must be in the same order for both files & there can't be missing values in the metadata file
         self.file1 = file1
