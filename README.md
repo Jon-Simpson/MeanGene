@@ -29,3 +29,4 @@ There are two methods ```runPCA(geneFunctions ,components=2, subsets=None)``` an
 
 
 
+
