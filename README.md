@@ -7,7 +7,7 @@ MeanGene was designed for clustering genetic expression data, and more specifica
 
 To further detail the aim of MeanGene, I'll explain the 3 types of data needed to optimize results:
 ## data
-- **Count Data**: A dataframe of the count data for genes (represented as symbols), for as many samples as you may have
+- **Count Data**: A dataframe of the count data for each gene/sample. The data from be a DESeq output trimmed of all columns excluding the cout data.
 - **Metadata**: Such as phenotypic data. (for example; I knew the sex, age, and contamination level of a certain chemical for my samples). The more metadata the better, since the metadata allows for more opportunity to find correlations between patterns found and the phenotypes.
 - **Subsets of genes**: A list of subsets of genes. This where MeanGene differentiates itself from other implementations of genetic pattern recognition. You supply MeanGene with many, many subsets of genes, and ideally the sets will be related to some biological function (i.e. breast cancer, lupus, influenza, etc). If a pattern is found among a set of genes, you have just discovered a function or disease that is differentially expressed between your samples. More on retrieving this information in a bit.
 
@@ -19,7 +19,7 @@ meangene(DESeqDF, metadata)
 Where DESeqDF is a dataframe of a DESeq output. 
 
 ## Methods
-There are two methods ```runPCA(geneFunctions ,components=2, subsets=None)``` and ```cluster(transformation=None)```.
+There are two methods ```runPCA(geneFunctions, components=2, subsets=None)``` and ```cluster(transformation=None)```.
 
 ```runPCA()``` performs principal component analysis on your features. Where 'geneFunctions' is an list of strings that describe each subset of genes given, 'components' is the number of principal components to actually use for the clustering algorithm (set to 2 by default), and 'subsets' is a 2-dimensional array of subsets of genes.
 
