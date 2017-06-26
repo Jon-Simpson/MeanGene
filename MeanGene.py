@@ -8,7 +8,7 @@ from sklearn.cluster import KMeans
 class meangene(object):
     def __init__(self, ExpressionFile, MetadataFile):
 
-        # File1 is a DEseq expression txt file from OnRamp
+        # File1 is a DEseq expression (txt file) from OnRamp Bioinformatics pipeline
         # File2 is a metadata txt file
         # NOTE: Samples must be in the same order for both files & there can't be missing values in the metadata file
 
@@ -38,13 +38,13 @@ class meangene(object):
             subsets = np.array(subsets)
             geneFunctions = np.array(geneFunctions)
 
-            # trim the subsets of those whose length is less than number of PCA components
+            # Drop the sets of genes whose length is less than the number of 'components'
             lengths = np.array([len(i) for i in subsets])
             crop = np.where(lengths >= components)
             subsets = subsets[crop]
             geneFunctions = geneFunctions[crop]
 
-            # Generate the number of PCA analyses to do (one for each subset of genes)
+            # Generate the number of PCA analyses to do (one for each set of genes)
             analysisIDs = list(range(len(subsets)))
             coords = []
             # Start building DataFrame
