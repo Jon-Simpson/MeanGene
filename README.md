@@ -7,7 +7,7 @@ MeanGene was designed for clustering genetic expression data, and more specifica
 
 To further detail the aim of MeanGene, the workflow takes in 3 types of data to be effective:
 ###### data
-1) A dataframe of the count data for genes (represented as symbols), for as many samples as you may have
-2) Metadata for the samples, such as phenotypic data. The more metadata the better, since the metadata allows for more opportunity to find correlations between patterns found and the phenotypes.
-3) A list of subsets of genes. This where MeanGene differentiates itself from other implementations of genetic pattern recognition. You supply MeanGene with many, many subsets of genes, and ideally the sets will be related to some biological function (breast cancer, lupus, influenza, etc). If a pattern is found among a set of genes, you have just discovered a function or disease that is differentially expressed between your samples. 
+Count Data: A dataframe of the count data for genes (represented as symbols), for as many samples as you may have
+Metadata: Such as phenotypic data. (for example; I knew the sex, age, and contamination level of a certain chemical for my samples). The more metadata the better, since the metadata allows for more opportunity to find correlations between patterns found and the phenotypes.
+Subsets of genes: A list of subsets of genes. This where MeanGene differentiates itself from other implementations of genetic pattern recognition. You supply MeanGene with many, many subsets of genes, and ideally the sets will be related to some biological function (breast cancer, lupus, influenza, etc). If a pattern is found among a set of genes, you have just discovered a function or disease that is differentially expressed between your samples. 
 
