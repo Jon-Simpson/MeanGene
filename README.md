@@ -18,5 +18,14 @@ meangene(DESeqDF, metadata)
 ```
 Where DESeqDF is a dataframe of a DESeq output. 
 
+## Methods
+There are two methods ```runPCA(geneFunctions ,components=2, subsets=None)``` and ```cluster(transformation=None)```.
+
+```runPCA()``` performs principal component analysis on your features. Where 'geneFunctions' is an list of strings that describe each subset of genes given, 'components' is the number of principal components to actually use for the clustering algorithm (set to 2 by default), and 'subsets' is a 2-dimensional array of subsets of genes.
+
+```cluster()``` performs K-Means clustering on the subsets, using their principal components, if none are given, then clustering is performed on the entire set of genes given from the DESeq (whole transcriptome).
+
+
+
 
 
