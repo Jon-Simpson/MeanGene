@@ -1,93 +1,98 @@
+import pandas as pd
+import numpy as np
+from sklearn import preprocessing as pp
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+
+
 class meangene(object):
-    def __init__(self, file1, file2):
+    def __init__(self, ExpressionFile, MetadataFile):
 
-        import pandas as pd
-        import numpy as np
-
-        # File1 is a DEseq ouput file in .txt format created by OnRamp Bioinformatics
+        # File1 is a DEseq expression txt file from OnRamp
         # File2 is a metadata txt file
         # NOTE: Samples must be in the same order for both files & there can't be missing values in the metadata file
-        self.file1 = file1
-        self.file2 = file2
 
-        # Import the raw text file from the DEseq file into a DataFrame
-        df = pd.read_table(file1, low_memory=False)
-
-        # Import metadata file into a DataFrame
-        metaDF = pd.read_table(file2)
-
-        # Remove the annotation and metric columns & transpose the matrix
-        df = df.drop(df.columns[[1, 2, 3, -1, -2, -3, -4, -5, -6]], axis=1).transpose()
-
-        # Make the first row (gene symbols) the column names
-        header = df.iloc[0]
-        df = df.iloc[1:].rename(columns=header)
+        self.data = ExpressionFile
+        self.metadataDF = MetadataFile
 
         # Remove the genes with zero expressions across all samples
-        zero_columns = df.mean() == 0
-        df = df.drop(df.columns[zero_columns], axis=1)
+        zero_columns = self.data.mean() == 0
+        self.data = self.data.drop(self.data.columns[zero_columns], axis=1)
+        self.data.columns = map(str.upper, self.data.columns)
 
-        # Generate sample IDs (Starting with 0 and going to n-1) and input as 1st column on metadata
-        sampleID = []
-        for i in range(len(metaDF.index)):
-            sampleID.append(metaDF.index[i])
-        metaDF.insert(0, 'SampleID', sampleID)
+        # Generate sample IDs (Starting with 0 and going to n-1) and input as 1st column on metadat
+        self.metadataDF.insert(0, 'SampleID', np.arange(len(self.metadataDF)))
 
         # Save data as attributes for accessibility
-        self.data = df
-        self.data_head = df.head()
-        self.metadata = metaDF
+        self.data_head = self.data.head()
 
-    def runPCA(self, components=2, subsets=None):
+    def runPCA(self, geneFunctions, components=2, subsets=None):
 
-        import numpy as np
-        import pandas as pd
-        from sklearn import preprocessing as pp
-        from sklearn.decomposition import PCA
 
         # PCA is robust for up to 10 Principal Components
         coordNames = ['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10']
-        sampleID = self.metadata.SampleID
+        sampleID = self.metadataDF.SampleID
 
-        if subsets != None:
+        if subsets.empty != True:
+
+            subsets = np.array(subsets)
+            geneFunctions = np.array(geneFunctions)
+
+            # trim the subsets of those whose length is less than number of PCA components
+            lengths = np.array([len(i) for i in subsets])
+            crop = np.where(lengths >= components)
+            subsets = subsets[crop]
+            geneFunctions = geneFunctions[crop]
 
             # Generate the number of PCA analyses to do (one for each subset of genes)
             analysisIDs = list(range(len(subsets)))
             coords = []
             # Start building DataFrame
-            self.analysisDF = pd.DataFrame({'AnalysisIDs': analysisIDs})
+            self.analysisDF = pd.DataFrame({'AnalysisID': analysisIDs})
+            pcaobject = []
 
             for subset in subsets:
                 gene_indices = np.empty(0)
                 for gene in subset:
-                    gene_indices = np.append(gene_indices, np.where(self.data.columns == gene))
+                    inds = np.where(self.data.columns == gene)
+                    inds = np.array(inds).reshape(-1, 1)
+                    if len(inds) > 0:
+                        means = []
+                        for j in inds:
+                            means.append(np.mean(DESeqDF.iloc[:, j].values))
+                        gene_indices = np.append(gene_indices, inds[np.argmax(means)])
+                gene_indices.flatten()
+                subsetdata = self.data.iloc[:, gene_indices]
 
-                subsetdata = self.data.iloc[:, list(gene_indices)]
+                if len(subsetdata.columns) >= components:
+                    # Convert table into array format for normalization of data --> Converts all values to a 0-1 scale
+                    data_arr = np.array(subsetdata)
+                    norm_data = pp.normalize(data_arr)
 
-                # Convert table into array format for normalization of data --> Converts all values to a 0-1 scale
-                data_arr = np.array(subsetdata)
-                norm_data = pp.normalize(data_arr)
+                    # Reduce the dimensions down to n principal components
+                    pca = PCA(n_components=components)
+                    pca.fit(norm_data)
+                    pcadata = pca.transform(norm_data)
 
-                # Reduce the dimensions down to n principal components
-                pca = PCA(n_components=components)
-                pca.fit(norm_data)
-                pcadata = pca.transform(norm_data)
+                    pcaobject.append(pca)
 
-                # Assemble DataFrame for each subset of genes and append to coords
-                coordnames = coordNames[:components]
-                coordlists = []
-                for i in range(components):
-                    coordlists.append(list(pcadata[:, i]))
-                zipped = list(zip(coordnames, coordlists))
-                df = pd.DataFrame(dict(zipped))
-                df.insert(0, "SampleID", sampleID)
-                coords.append(df)
+                    # Assemble DataFrame for each subset of genes and append to coords
+                    coordnames = coordNames[:components]
+                    coordlists = []
+                    for i in range(components):
+                        coordlists.append(list(pcadata[:, i]))
+                    zipped = list(zip(coordnames, coordlists))
+                    df = pd.DataFrame(dict(zipped))
+                    df.insert(0, "SampleID", sampleID)
+                    coords.append(df)
+                else:
+                    pcaobject.append(None)
+                    coords.append(None)
 
-                # self.pc_variance = pca.explained_variance_ratio_
-                # insert(1,"Coordinates", coords)
-
-            # Construct final analysisDF
-            self.analysisDF.insert(1, 'Coordinates', coords)
+            # Add tp final analysisDF
+            self.analysisDF.insert(1, 'Genes', geneFunctions)
+            self.analysisDF.insert(2, 'PCAobject', pcaobject)
+            self.analysisDF.insert(3, 'Coordinates', coords)
 
         else:
             # Convert table into array format for normalization of data --> Converts all values to a 0-1 scale
@@ -106,37 +111,59 @@ class meangene(object):
             zipped = list(zip(coordnames, coordlists))
             df = pd.DataFrame(dict(zipped))
             df.insert(0, "SampleID", sampleID)
-            self.analysisDF = pd.DataFrame({'AnalysisIDs': [0], 'Coordinates': [df]})
+            self.analysisDF = pd.DataFrame({'AnalysisID': [0], 'Coordinates': [df]})
+            self.analysisDF.insert(1, 'Genes', 'AllGenes')
+            self.analysisDF.insert(2, 'PCAobject', pca)
 
-    def cluster(self, transformation=None, method='kmeans_classic', num_clusters=2):
+    def cluster(self, transformation=None):
 
-        if method != 'kmeans_classic':
-            print("Clustering method is not supported!")
+        if (transformation == "PCA"):
 
-        else:
-            from sklearn.cluster import KMeans
-            import numpy as np
+            if hasattr(self, 'analysisDF') != True:
+                print("Perform PCA first!")
 
-            if (transformation == "PCA"):
+            else:
+                metadatatype = self.metadataDF.columns[2:]
+                metadataseps = []
 
-                if hasattr(self, 'analysisDF') != True:
-                    print("Perform PCA first!")
+                # Run K-Means on each subset PCA and add cluster-quality metric for each label type to DataFrame
+                for i in range(len(self.analysisDF)):
+                    seplevels = []
+                    if self.analysisDF.iloc[i, 2] != None:
+                        arr = np.array(self.analysisDF.iloc[i, 3].iloc[:, 1:]).astype(float)
+                        n = len(self.analysisDF.iloc[:, 3][i].iloc[:])
+                        labels = 0
+                        # If samples are more than 15, find the optimal number of clusters (elbow method)
+                        if n > 15:
+                            inertias = []
+                            pct_change = []
+                            optimalK = 2
+                            for i in range(1, n):
+                                if i > 2:
+                                    if pct_change[i - 3] < 0.2:
+                                        optimalK = i - 2
+                                        break
+                                kmeans = KMeans(n_clusters=i)
+                                kmeans.fit(arr)
+                                inertias.append(kmeans.inertia_)
+                                if i > 1:
+                                    pct_change.append((inertias[i - 2] - inertias[i - 1]) / inertias[i - 2])
 
-                else:
-                    metadatatype = self.metadata.columns[2:]
-                    metadataseps = []
+                            kmeans = KMeans(n_clusters=optimalK)
+                            kmeans.fit(arr)
+                            labels = list(kmeans.labels_)
+                        # If samples are less than 10, use 2 clusters
+                        else:
+                            kmeans = KMeans(n_clusters=2)
+                            kmeans.fit(arr)
+                            labels = list(kmeans.labels_)
 
-                    # Run K-Means on each subset PCA and add cluster-quality metric for each label type to DataFrame
-                    for i in range(len(self.analysisDF)):
                         seplevels = []
-                        kmeans = KMeans(n_clusters=num_clusters)
-                        arr = np.array(mg.analysisDF.iloc[:, 1][i].iloc[:, [1, 2]])
-                        kmeans.fit(arr)
-                        labels = list(kmeans.labels_)
-                        seplevels = []
-                        for i in range(len(self.metadata.columns[2:])):
-                            ls = list(self.metadata.iloc[:, i + 2])
-                            df = pd.DataFrame({'Labels': labels, 'Type': ls})
+                        for i in self.metadataDF.columns[2:]:
+                            indices = self.metadataDF[i].dropna().index
+                            labels2 = np.array(labels)[indices]
+                            meta = self.metadataDF[i][indices]
+                            df = pd.DataFrame({'Labels': labels2, 'Type': meta})
                             ct = pd.crosstab(df['Labels'], df['Type'])
                             clusterpurities = []
                             for j in range(len(ct.iloc[:, 0])):
@@ -144,29 +171,54 @@ class meangene(object):
                                 clusterpurities.append(clusterpurity)
                             seplevels.append(sum(clusterpurities) / len(ct.iloc[:]))
                         metadataseps.append(seplevels)
-                    seps = np.array(metadataseps)
-                    for i in range(len(metadatatype)):
-                        self.analysisDF[metadatatype[i]] = seps[:, i]
-
-
-
-            else:
-                # Runs clustering on using ALL gene expressions
-                # Create the a kmeans object and fit it to the data
-                metadatatype = self.metadata.columns[2:]
-                kmeans = KMeans(n_clusters=num_clusters)
-                kmeans.fit(self.data)
-                # Get cluster centers and cluster labels
-                labels = np.array(kmeans.labels_)
-                seplevels = []
-                for i in range(len(self.metadata.columns[2:])):
-                    ls = list(self.metadata.iloc[:, i + 2])
-                    df = pd.DataFrame({'Labels': labels, 'Type': ls})
-                    ct = pd.crosstab(df['Labels'], df['Type'])
-                    clusterpurities = []
-                    for j in range(len(ct.iloc[:, 0])):
-                        clusterpurity = (max(ct.iloc[j]) / ct.iloc[j].sum())
-                        clusterpurities.append(clusterpurity)
-                    seplevels.append(sum(clusterpurities) / len(ct.iloc[:]))
+                    else:
+                        metadataseps.append([None] * len(self.metadataDF.columns[2:]))
+                seps = np.array(metadataseps)
                 for i in range(len(metadatatype)):
-                    self.analysisDF[metadatatype[i]] = seplevels[i]
+                    self.analysisDF[metadatatype[i]] = seps[:, i]
+
+        else:
+            # Runs clustering on using ALL gene expressions
+            if hasattr(self, 'analysisDF'):
+                self.analysisDF = self.analysisDF.drop(['Genes', 'PCAobject', 'Coordinates'], axis=1)
+                self.analysisDF = self.analysisDF.drop(np.arange(1, len(self.analysisDF)), axis=0)
+            else:
+                self.analysisDF = pd.DataFrame({'AnalysisID': [0]})
+            metadatatype = self.metadataDF.columns[2:]
+            arr = np.array(self.data)
+            inertias = []
+            pct_change = []
+            optimalK = 2
+            n = len(self.metadataDF)
+            labels = 0
+            if n > 15:
+                for i in range(1, n):
+                    if i > 2:
+                        if pct_change[i - 3] < 0.15:
+                            optimalK = i - 2
+                            break
+                    kmeans = KMeans(n_clusters=i)
+                    kmeans.fit(arr)
+                    inertias.append(kmeans.inertia_)
+                    if i > 1:
+                        pct_change.append((inertias[i - 2] - inertias[i - 1]) / inertias[i - 2])
+
+                kmeans = KMeans(n_clusters=optimalK)
+                kmeans.fit(arr)
+                labels = list(kmeans.labels_)
+            else:
+                kmeans = KMeans(n_clusters=2)
+                kmeans.fit(arr)
+                labels = list(kmeans.labels_)
+            seplevels = []
+            for i in range(len(self.metadataDF.columns[2:])):
+                ls = list(self.metadataDF.iloc[:, i + 2])
+                df = pd.DataFrame({'Labels': labels, 'Type': ls})
+                ct = pd.crosstab(df['Labels'], df['Type'])
+                clusterpurities = []
+                for j in range(len(ct.iloc[:, 0])):
+                    clusterpurity = (max(ct.iloc[j]) / ct.iloc[j].sum())
+                    clusterpurities.append(clusterpurity)
+                seplevels.append(sum(clusterpurities) / len(ct.iloc[:]))
+            for i in range(len(metadatatype)):
+                self.analysisDF[metadatatype[i]] = seplevels[i]
